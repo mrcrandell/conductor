@@ -23,23 +23,108 @@ onUnmounted(() => {
   if (unsubscribe) unsubscribe()
 })
 
-// 1. Separate standard solo players (Office, Turntable, Bedroom)
-const standardPlayers = computed(() => {
+const mediaPlayerTargets = [
+  'media_player.office_speakers',
+  'media_player.turntable',
+  'media_player.sonos_move',
+  'media_player.bedroom_clock',
+]
+
+// 1. Build grouped Sonos zones so grouped members render as one card.
+const processedMediaPlayers = computed(() => {
   if (!entities.value) return []
-  const targets = [
-    'media_player.office_speakers',
-    'media_player.turntable',
-    'media_player.sonos_move',
-    'media_player.bedroom_clock',
-  ]
-  return targets.reduce(
-    (acc, id) => {
-      const entity = entities.value?.[id]
-      if (entity) acc.push({ id, data: entity })
-      return acc
-    },
-    [] as Array<{ id: string; data: HassEntity }>,
-  )
+
+  const activeTargets = mediaPlayerTargets
+    .map((id) => entities.value?.[id])
+    .filter((entity): entity is HassEntity => !!entity)
+
+  const processedIds = new Set<string>()
+  const outputPlayers: Array<{ id: string; data: HassEntity; groupMembers: HassEntity[] }> = []
+
+  for (const entity of activeTargets) {
+    const entityId = entity.entity_id
+    if (processedIds.has(entityId)) continue
+
+    const ownSonosGroup = Array.isArray(entity.attributes.sonos_group)
+      ? (entity.attributes.sonos_group as string[])
+      : []
+
+    const ownGroupMembers = Array.isArray(entity.attributes.group_members)
+      ? (entity.attributes.group_members as string[])
+      : []
+
+    // Some Sonos entities occasionally expose incomplete group data. If this entity doesn't
+    // report a full group itself, infer it from peer entities that do include this ID.
+    let inferredPeerGroup: string[] = []
+    if (ownSonosGroup.length <= 1 && ownGroupMembers.length <= 1) {
+      const peerWithGroup = activeTargets.find((candidate) => {
+        const candidateSonosGroup = Array.isArray(candidate.attributes.sonos_group)
+          ? (candidate.attributes.sonos_group as string[])
+          : []
+        const candidateGroupMembers = Array.isArray(candidate.attributes.group_members)
+          ? (candidate.attributes.group_members as string[])
+          : []
+
+        return (
+          candidate.entity_id !== entityId &&
+          (candidateSonosGroup.includes(entityId) || candidateGroupMembers.includes(entityId))
+        )
+      })
+
+      if (peerWithGroup) {
+        inferredPeerGroup = [
+          ...(Array.isArray(peerWithGroup.attributes.sonos_group)
+            ? (peerWithGroup.attributes.sonos_group as string[])
+            : []),
+          ...(Array.isArray(peerWithGroup.attributes.group_members)
+            ? (peerWithGroup.attributes.group_members as string[])
+            : []),
+        ]
+      }
+    }
+
+    const candidateGroupIds = [entityId, ...ownSonosGroup, ...ownGroupMembers, ...inferredPeerGroup]
+    const activeGroupIds = [...new Set(candidateGroupIds)].filter((id) =>
+      mediaPlayerTargets.includes(id),
+    )
+
+    if (activeGroupIds.length > 1) {
+      const playingCoordinator = activeGroupIds.find((id) => {
+        const candidate = entities.value?.[id]
+        return candidate?.state === 'playing' || candidate?.state === 'paused'
+      })
+
+      const coordinatorId = playingCoordinator || activeGroupIds[0] || entityId
+
+      if (entityId !== coordinatorId) {
+        processedIds.add(entityId)
+        continue
+      }
+
+      const members = activeGroupIds
+        .filter((id) => id !== coordinatorId)
+        .map((id) => entities.value?.[id])
+        .filter((member): member is HassEntity => !!member)
+
+      outputPlayers.push({
+        id: coordinatorId,
+        data: entity,
+        groupMembers: members,
+      })
+
+      activeGroupIds.forEach((id) => processedIds.add(id))
+      continue
+    }
+
+    outputPlayers.push({
+      id: entityId,
+      data: entity,
+      groupMembers: [],
+    })
+    processedIds.add(entityId)
+  }
+
+  return outputPlayers
 })
 
 // 2. Unify the Living Room Soundbar & Apple TV
@@ -80,13 +165,14 @@ const unifiedLivingRoom = computed(() => {
           :atv="unifiedLivingRoom.atv"
         />
 
-        <!-- Solo Media Players -->
-        <div v-if="standardPlayers.length > 0" class="home-view-player-grid">
+        <!-- Solo and Grouped Media Players -->
+        <div v-if="processedMediaPlayers.length > 0" class="home-view-player-grid">
           <MediaPlayerTile
-            v-for="player in standardPlayers"
+            v-for="player in processedMediaPlayers"
             :key="player.id"
             :entity-id="player.id"
             :entity="player.data"
+            :group-members="player.groupMembers"
           />
         </div>
       </div>

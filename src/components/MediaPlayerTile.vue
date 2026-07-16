@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { callService } from 'home-assistant-js-websocket'
 import type { HassEntity } from 'home-assistant-js-websocket'
+import { useHAConnection } from '@/services/haService'
 
 const props = defineProps<{
   entity: HassEntity
   entityId: string
+  groupMembers?: HassEntity[]
 }>()
 
 // Grab friendly name or fall back to the ID
@@ -32,10 +35,58 @@ const artworkUrl = computed(() => {
     return artPath
   }
 })
+
+const resolvedGroupMembers = computed(() => props.groupMembers || [])
+
+const groupSpeakerRows = computed(() => {
+  return [props.entity, ...resolvedGroupMembers.value]
+})
+
+const isVolumeBusy = computed(() => {
+  return props.entity.state === 'unavailable'
+})
+
+const groupLabel = computed(() => {
+  if (!resolvedGroupMembers.value.length) return null
+  return `${displayName.value} Group (${resolvedGroupMembers.value.length + 1} Speakers)`
+})
+
+const adjustSpeakerVolume = async (
+  targetEntityId: string,
+  currentLevel: number,
+  direction: 'up' | 'down',
+) => {
+  try {
+    const connection = await useHAConnection()
+    const step = 0.05
+    let newLevel = direction === 'up' ? currentLevel + step : currentLevel - step
+    newLevel = Math.max(0, Math.min(1, newLevel))
+
+    await callService(connection, 'media_player', 'volume_set', {
+      entity_id: targetEntityId,
+      volume_level: newLevel,
+    })
+  } catch (error) {
+    console.error('Failed to change speaker volume:', error)
+  }
+}
+
+const unjoinSpeaker = async (targetEntityId: string) => {
+  try {
+    const connection = await useHAConnection()
+    await callService(connection, 'media_player', 'unjoin', {
+      entity_id: targetEntityId,
+    })
+  } catch (error) {
+    console.error('Failed to unjoin speaker from group:', error)
+  }
+}
 </script>
 
 <template>
   <div class="media-player-tile" :class="{ 'is-playing': isPlaying }">
+    <div v-if="groupLabel" class="media-player-group-badge">Grouped Zone: {{ groupLabel }}</div>
+
     <!-- Background blurred album art for a gorgeous native UI feel -->
     <div
       v-if="artworkUrl && isPlaying"
@@ -71,6 +122,54 @@ const artworkUrl = computed(() => {
           <span class="media-player-state-text">
             {{ entity.state }}
           </span>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="resolvedGroupMembers.length > 0" class="media-player-group-panel">
+      <div
+        v-for="speaker in groupSpeakerRows"
+        :key="speaker.entity_id"
+        class="media-player-group-volume-row"
+      >
+        <div class="media-player-group-speaker-meta">
+          <span class="media-player-group-speaker-name">
+            {{ speaker.attributes.friendly_name || speaker.entity_id }}
+          </span>
+          <span class="media-player-group-speaker-volume">
+            {{ Math.round((speaker.attributes.volume_level || 0) * 100) }}%
+          </span>
+        </div>
+
+        <div class="media-player-group-controls">
+          <button
+            class="media-player-group-btn"
+            :disabled="isVolumeBusy"
+            @click="
+              adjustSpeakerVolume(speaker.entity_id, speaker.attributes.volume_level || 0, 'down')
+            "
+            aria-label="Lower speaker volume"
+          >
+            -
+          </button>
+          <button
+            class="media-player-group-btn"
+            :disabled="isVolumeBusy"
+            @click="
+              adjustSpeakerVolume(speaker.entity_id, speaker.attributes.volume_level || 0, 'up')
+            "
+            aria-label="Raise speaker volume"
+          >
+            +
+          </button>
+          <button
+            v-if="speaker.entity_id !== entityId"
+            class="media-player-group-unjoin-btn"
+            @click="unjoinSpeaker(speaker.entity_id)"
+            aria-label="Ungroup speaker"
+          >
+            Ungroup
+          </button>
         </div>
       </div>
     </div>
@@ -117,6 +216,21 @@ const artworkUrl = computed(() => {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.media-player-group-badge {
+  position: relative;
+  z-index: 10;
+  margin-bottom: 0.625rem;
+  display: inline-flex;
+  border-radius: 9999px;
+  border: 1px solid rgb(30 64 175 / 0.9);
+  background-color: rgb(30 58 138 / 0.25);
+  padding: 0.2rem 0.625rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
+  color: rgb(191 219 254);
 }
 
 .media-player-artwork-container {
@@ -203,5 +317,78 @@ const artworkUrl = computed(() => {
   font-weight: 500;
   text-transform: capitalize;
   color: rgb(148 163 184);
+}
+
+.media-player-group-panel {
+  position: relative;
+  z-index: 10;
+  margin-top: 0.875rem;
+  display: grid;
+  gap: 0.5rem;
+  border-top: 1px solid rgb(51 65 85 / 0.7);
+  padding-top: 0.75rem;
+}
+
+.media-player-group-volume-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.media-player-group-speaker-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.media-player-group-speaker-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  color: rgb(226 232 240);
+}
+
+.media-player-group-speaker-volume {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 700;
+  color: rgb(148 163 184);
+}
+
+.media-player-group-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.media-player-group-btn,
+.media-player-group-unjoin-btn {
+  border: 1px solid rgb(51 65 85);
+  border-radius: 0.45rem;
+  background-color: rgb(30 41 59);
+  color: rgb(241 245 249);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 700;
+  transition: background-color 160ms;
+}
+
+.media-player-group-btn:hover,
+.media-player-group-unjoin-btn:hover {
+  background-color: rgb(51 65 85);
+}
+
+.media-player-group-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.media-player-group-unjoin-btn {
+  border-color: rgb(100 116 139);
 }
 </style>
