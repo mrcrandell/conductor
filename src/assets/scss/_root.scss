@@ -1,0 +1,31 @@
+@use 'sass:meta';
+@use '_variables.scss' as *;
+@use '_functions.scss' as *;
+
+:root {
+  @if $font-size-root != null {
+    --root-font-size: #{$font-size-root};
+  }
+
+  --font-sans-serif: #{meta.inspect($font-family-sans-serif)};
+  --headings-font-family: #{meta.inspect($headings-font-family)};
+
+  --body-font-family: #{meta.inspect($font-family-base)};
+  --body-font-size: #{$font-size-base};
+  --body-font-weight: #{$font-weight-base};
+  --body-line-height: #{$line-height-base};
+  --body-color: #{$body-color};
+  --body-bg: #{$body-bg};
+  --body-text-align: left;
+
+  --link-color-rgb: #{to-rgb($link-color)};
+  --link-hover-color-rgb: #{to-rgb($link-hover-color)};
+
+  --heading-color: #{$swamp};
+  --h1-color: #{$deep_cerulean};
+  --h2-color: #{$cerulean};
+
+  --highlight-color: #{$body-color};
+  --highlight-bg: #fff3cd;
+  --code-color: #{$deep_cerulean};
+}

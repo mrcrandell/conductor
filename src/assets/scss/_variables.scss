@@ -1,0 +1,118 @@
+@use 'sass:color';
+@use 'sass:map';
+@use 'sass:math';
+@use '_functions.scss' as *;
+
+$color-surface-900: #0f172a;
+$color-surface-800: #1e293b;
+$color-text-primary: #f1f5f9;
+$color-text-muted: #94a3b8;
+
+$radius-lg: 1rem;
+$radius-md: 0.5rem;
+
+$space-2: 0.5rem;
+$space-3: 0.75rem;
+$space-4: 1rem;
+
+// Spacing
+//
+// Control the default styling of most elements by modifying these variables
+$spacer: 1rem;
+
+// Typography
+//
+// Font, line-height, and color for body text, headings, and more.
+
+// $font-size-root affects the value of `rem`, which is used for font sizes, paddings, and margins
+// $font-size-base affects the font size of the body text
+$font-size-root: null; // Uses browser default, typically 16px
+$font-size-base: 1rem; // Assumes the browser default, typically `16px`
+
+// Paragraphs
+//
+// Style p element.
+
+$paragraph-margin-bottom: 1rem;
+
+$font-family-sans-serif: 'Roboto', Arial, sans-serif;
+$font-family-serif: 'Cormorant Garamond', 'Garamond', serif;
+$font-family-base: $font-family-sans-serif;
+
+$font-weight-lighter: lighter;
+$font-weight-light: 300;
+$font-weight-normal: 400;
+$font-weight-bold: 700;
+$font-weight-bolder: bolder;
+$font-size-sm: 0.875rem; // 14px
+$font-size-lg: $font-size-base * 1.25;
+$h1-font-size: #{rem(40)};
+$h2-font-size: #{rem(32)};
+$h3-font-size: #{rem(28)};
+$h4-font-size: #{rem(24)};
+$h5-font-size: $font-size-base * 1.25;
+$h6-font-size: $font-size-base;
+
+$font-weight-base: $font-weight-normal;
+$line-height-base: 1.5;
+
+$headings-font-family: $font-family-serif;
+$headings-font-weight: 600;
+$headings-line-height: 1.2;
+$headings-margin-bottom: $spacer * 0.5;
+
+// Reboot dependency variables
+$white: #fff;
+$black: #252525;
+
+$deep_cerulean: #006db0;
+$cerulean: #0ab1c7;
+$swamp: #000e16;
+$azure_radiance: #009eff;
+
+$enable-smooth-scroll: true;
+$enable-button-pointers: true;
+
+$body-bg: $white;
+$body-color: $swamp;
+$body-emphasis-color: $black;
+$body-secondary-color: rgba($body-color, 0.75);
+$body-secondary-bg: #e9ecef;
+$body-tertiary-color: rgba($body-color, 0.5);
+$body-tertiary-bg: #f8f9fa;
+
+$link-color: $azure_radiance;
+$link-decoration: none;
+$link-hover-color: $cerulean;
+$link-hover-decoration: underline;
+
+$small-font-size: $font-size-sm;
+$sub-sup-font-size: 0.75em;
+$mark-padding: 0.1875em;
+$dt-font-weight: $font-weight-bold;
+$nested-kbd-font-weight: $font-weight-bold;
+
+$hr-margin-y: $spacer;
+$hr-color: null;
+$hr-border-width: 1px;
+$hr-border-color: $azure_radiance;
+$hr-opacity: 1;
+
+$border-radius-sm: rem(1);
+
+$table-cell-padding-y: 0.5rem;
+$table-caption-color: #6c757d;
+$table-th-font-weight: null;
+
+$font-family-code: $font-family-sans-serif;
+$code-font-size: $font-size-sm;
+$pre-color: null;
+
+$kbd-padding-y: 0.2rem;
+$kbd-padding-x: 0.4rem;
+$kbd-font-size: $font-size-sm;
+$kbd-color: $white;
+$kbd-bg: #6c757d;
+
+$legend-margin-bottom: 0.5rem;
+$legend-font-size: 1.5rem;
