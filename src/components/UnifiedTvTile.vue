@@ -7,7 +7,12 @@ import { useHAConnection } from '@/services/haService'
 const props = defineProps<{
   beam?: HassEntity // Sonos Beam (media_player.living_room)
   atv?: HassEntity // Apple TV (media_player.living_room_tv)
+  roomName?: string
 }>()
+
+const displayRoomName = computed(() => {
+  return props.roomName || 'Room'
+})
 
 // State detection
 const isTvActive = computed(() => {
@@ -34,7 +39,7 @@ const mediaTitle = computed(() => {
   if (activeSource.value === 'sonos') {
     return props.beam?.attributes.media_title || 'Playing Music'
   }
-  return 'Living Room TV'
+  return 'TV'
 })
 
 const mediaSubtitle = computed(() => {
@@ -80,11 +85,11 @@ const adjustVolume = async (direction: 'up' | 'down') => {
     newLevel = Math.max(0, Math.min(1, newLevel))
 
     await callService(connection, 'media_player', 'volume_set', {
-      entity_id: 'media_player.living_room',
+      entity_id: props.beam.entity_id,
       volume_level: newLevel,
     })
 
-    console.log(`Volume set to ${Math.round(newLevel * 100)}% on Sonos Beam`)
+    console.log(`Volume set to ${Math.round(newLevel * 100)}%`)
   } catch (error) {
     console.error('Failed to change Sonos volume:', error)
   }
@@ -113,7 +118,7 @@ const adjustVolume = async (direction: 'up' | 'down') => {
         <!-- Metadata Text -->
         <div class="meta-details">
           <div class="meta-header">
-            <span class="room-label">Living Room</span>
+            <span class="room-label">{{ displayRoomName }}</span>
             <span v-if="isTvActive" class="source-badge" :class="activeSource">
               {{ activeSource === 'apple_tv' ? 'TV' : 'Music' }}
             </span>

@@ -1,5 +1,20 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import MediaOrchestrator from '@/components/MediaOrchestrator.vue'
+import { useHAConnection } from '@/services/haService'
+
+onMounted(async () => {
+  try {
+    const connection = await useHAConnection()
+    const entityRegistryList = await connection.sendMessagePromise({
+      type: 'config/label_registry/list',
+    })
+
+    console.log('config/label_registry/list:', entityRegistryList)
+  } catch (error) {
+    console.error('Failed to fetch label registry list:', error)
+  }
+})
 </script>
 
 <template>

@@ -106,7 +106,7 @@ const unjoinSpeaker = async (targetEntityId: string) => {
 
       <!-- Track Information -->
       <div class="media-player-meta-details">
-        <h3 class="media-player-label">{{ displayName }} {{ props.entity.state }}</h3>
+        <h3 class="media-player-label">{{ displayName }}</h3>
 
         <div v-if="isPlaying" class="media-player-now-playing">
           <p class="media-player-track-title">
